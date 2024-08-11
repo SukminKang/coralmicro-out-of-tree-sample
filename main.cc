@@ -48,7 +48,7 @@ void invoke(char kModelPath[]) {
   }
 
   tflite::MicroErrorReporter error_reporter;
-  tflite::MicroMutableOpResolver<10> resolver;
+  tflite::MicroMutableOpResolver<12> resolver;
   resolver.AddCustom(kCustomOp, RegisterCustomOp());
   resolver.AddQuantize();
   resolver.AddConv2D();
@@ -59,6 +59,8 @@ void invoke(char kModelPath[]) {
   resolver.AddFullyConnected();
   resolver.AddSoftmax();
   resolver.AddAveragePool2D();
+  resolver.AddMaxPool2D();
+  resolver.AddConcatenation();
 
   tflite::MicroInterpreter interpreter(tflite::GetModel(model.data()), resolver,
                                        tensor_arena, kTensorArenaSize,
@@ -105,29 +107,39 @@ void invoke(char kModelPath[]) {
   // Turn on Status LED to show the board is on.
   LedSet(Led::kStatus, true);
 
+  auto boot_start = TimerMillis();
   auto tpu_context = EdgeTpuManager::GetSingleton()->OpenDevice();
   if (!tpu_context) {
     printf("ERROR: Failed to get EdgeTpu context\r\n");
     vTaskSuspend(nullptr);
   }
+  auto boot_end = TimerMillis();
+  printf(
+      "TPU boot time: %lums\r\n",
+      static_cast<uint32_t>(boot_end - boot_start));
 
   // for (int i = 0; i < 1024 * 1024; i++) {
   //   temp[i] = i % 128;
   // }
   // memset(temp, 0, 1024 * 1024);
 
+  // memset(temp, 0, 1024 * 1024);
+  // invoke("/models/multi/inception_v2/1_1.tflite");
+
+  memset(temp, 0, 1024 * 1024);
+  invoke("/models/multi/inception_v2/5_1_edgetpu.tflite");
+  memset(temp, 0, 1024 * 1024);
+  invoke("/models/multi/inception_v2/5_2_edgetpu.tflite");
+  memset(temp, 0, 1024 * 1024);
+  invoke("/models/multi/inception_v2/5_3_edgetpu.tflite");
+
   // cpu full
-  memset(temp, 0, 1024 * 1024);
-  invoke("/models/mobilenet_v2_1.0_224_quant.tflite");
-  for (int i = 0; i < 5; i++) {
-    printf("output[%d]: %d\r\n", i, temp[i]);
-  }
+  // memset(temp, 0, 1024 * 1024);
+  // invoke("/models/mobilenet_v2_1.0_224_quant.tflite");
+  
   // tpu full
-  memset(temp, 0, 1024 * 1024);
-  invoke("/models/tpu/mobilenet_v2_1.0_224_quant_edgetpu.tflite");
-  for (int i = 0; i < 5; i++) {
-    printf("output[%d]: %d\r\n", i, temp[i]);
-  }
+  // memset(temp, 0, 1024 * 1024);
+  // invoke("/models/tpu/mobilenet_v2_1.0_224_quant_edgetpu.tflite");
 
   // cpu models
   // invoke("/models/cpu/01.tflite");
